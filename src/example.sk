@@ -1,0 +1,171 @@
+
+
+
+square
+{
+	x x *
+} (i64 x -> i64) = :=
+
+main
+{
+	// :=  infers the type from the RHS term
+	// all integer immediates are interpreted as i64
+	// meaning a is an i64
+	
+	a 2 :=
+	
+	//the explict way to to this would be
+	b i64 := 2 =
+	//a new instance of the type i32 is b, and b equals 2
+
+	// or for easier reading
+//	b i64 :=
+//		2 =
+
+	//note that just `b i64 :=` will be default intialized(deterministically)
+	// -- it's `0` with ints and floats
+	
+	c b (square) :=
+
+	"Hello World" (print)
+
+	0 //the return value is always the last pushed value on the stack
+} (void -> i32) = :=
+
+
+
+
+
+// Refrences
+// The SIK language normally passes arguements by copy, and same with equals statements
+// however, the language also supports refrences(not pointers!).
+
+//a function that zeroes out x (this is in an example, it doesn't have to make sense)
+zero1
+{
+	x 0 =
+} (i64  x -> i64) = :=
+
+zero2
+{
+	x 0 =
+} (i64& x -> i64) = :=
+
+zero3
+{
+	x 0 =
+} (i64! x -> i64) = :=
+
+
+main2
+{
+	a 7 :=
+
+	//for zero1 we can pass by copy or refrence
+	a	(zero1) //nothing happens to a, it passes by copy
+	&a	(zero1) //we are passing by refrence, a is zeroed
+
+	a 7 =
+
+	//for zero2 we can only pass by refrence
+//	a 	(zero2) //error! you are passing by copy!
+	&a 	(zero2) //good. passing by refrence
+
+	//for zero3 we can only pass by copy
+	a 	(zero3) //good. passing by copy
+//	&a	(zero3) //error! you are passing by refrence!	
+
+	// what these previous examples represent is that passing by refrence
+	// is decided by the one calling the function, while the function can restrict
+	// what is passed to it
+
+	0
+
+
+} (void -> i32) = :=
+
+
+// the stack / stack term:
+// sometimes, like in the ternary operator, we need to encapsulate instructions.
+// The SIKlang parser works like so: starting from the left, the parser reads terms,
+// and pushes them onto the stack. When it reaches an operation, or a function, it
+// executes that operation/function and pops the appropriate amount of terms off
+// the stack. the result is then pushed onto the stack. This is done on a line by line
+// basis, meaning the stack is not preserved going into the next line which is why we
+// have $cat to "concatenate" the stacks. 
+//
+// Sometimes, the stack is ambiguous, like with the ternary operator. So we can encapsulate
+// our terms into a stack term using {  }, with the terms going inside like normal.
+// this also serves a second purpose by preventing the execution of its members.
+//
+// if you wanted to execute a stack term you have two options:
+// 1. Wrap your stack term to be executed
+//		`({"hello world!" (print)})
+// 2. Use the empty function call
+//		`{"hello world!" (print)} ()`
+//
+// Number 2 is probably preferable.
+// 
+//
+// This information becomes especially important when working with the ternary operator:
+//
+// Control flow:
+// So knowing what we know about stack terms(and their execution), 
+// how does the ternary operator work? First, the ternary operator pops the previous 3
+// terms off of the stack. It reads the first, a boolean, and if it's true it "returns",
+// the second term, else, it returns the 3rd.
+//
+// With how the ternary works in mind, looking a `fn main3 -> i32` we can see how
+// a stack term is selected based upon x's true/false value, and then that stack
+// term is executed. if we were not to encapsulate the two print statements
+// within the stack terms, then based upon how SIKlang works, both print statements
+// would be evaulated, and their values pushed onto the stack. Meaning the ternary's
+// three values would x boolean, and the two prints' return values, which is not
+// what we intended. 
+
+main3
+{
+	x true :=
+
+	//if(x){ print("True!") } else { print("False!") }
+	
+	x {"True!" (print)} {"False!" (print)} ? ()
+
+	//if(x == true) { print("True!") } else { print("False!") }
+	// this example shows how you would utilize a conditional statement
+	
+	x true == (["True!" (print)]) (["False!" (print)]) ? ()
+
+	
+
+	//INTENTIONALLY BAD EXAMPLES
+	// both of these print both true and false.
+	// the first example won't raise an error, since the stack will just be filled with
+	// the print statements' returns, however, the 2nd will raise an error since
+	// we are trying to execute the return value of print, an int.
+
+	//INTENTIONALLY BAD EXAMPLES
+	x "True!" (print) "False!" (print) ?
+	x "True!" (print) "False!" (print) ? ()
+
+	// assuming print is void, then the ternary, not the execute, operator would
+	// raise an error, because the stack would only have one item.
+ 
+
+	0
+} (void -> i32) = :=
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
