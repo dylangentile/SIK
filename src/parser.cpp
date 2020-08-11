@@ -68,21 +68,42 @@ Parser::parseLambdaDesc()
 
 	fetchToken();
 
+	bool hitVoid = false;
 	while(true)
 	{
 		if(currentToken->mCat != kCat_Type)
 			lerror(kE_Fatal, currentToken, "expected type!");
 
 		TypeEnum theType = convert_toktype_typeenum(currentToken->mType);
-		desc->argTypes.push_back(theType);
+		TypeAttribute theAttr = kAttr_NULL;
 		
 		fetchToken();
 
 		if(theType == kType_VOID)
 		{
+			hitVoid = true;
 			goto commaCheck;
 		}
 
+		switch(currentToken->mType)
+		{
+			case kToken_AMPERSAND:
+			{ 
+				theAttr = kAttr_Refrence;
+				fetchToken();
+			}
+			break;
+			case kToken_NOT:
+			{
+				theAttr = kAttr_Restrict;
+				fetchToken();
+			}
+			break;
+			default:;
+
+		}
+
+		desc->argTypes.push_back(Type(theType, theAttr));
 		
 
 		if(currentToken->mCat != kCat_Symbol)
@@ -95,6 +116,9 @@ Parser::parseLambdaDesc()
 	commaCheck:
 		if(currentToken->mType != kToken_COMMA)
 			break;
+
+		if(hitVoid)
+			lerror(kE_Fatal, currentToken, "cannot have void followed by other types!");
 
 		fetchToken();
 

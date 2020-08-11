@@ -163,7 +163,7 @@ TypePush*
 LambdaBody::generateTypePush(Token* tok)
 {
 	TypePush* push = new TypePush();
-	push->mType = convert_toktype_typeenum(tok->mType);
+	push->mType = Type(convert_toktype_typeenum(tok->mType));
 	push->assignDebug(tok);
 
 	termVec.push_back(static_cast<Term*>(push));

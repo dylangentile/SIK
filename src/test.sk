@@ -1,6 +1,5 @@
 //$import io.print as print
 
-//yolo
 main
 {
 	"hello world!" (print)

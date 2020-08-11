@@ -1,4 +1,4 @@
-OBJ := main.o term.o typing.o parser.o lexer.o error.o
+OBJ := main.o interpreter.o term.o typing.o parser.o lexer.o error.o
 CXX := clang++
 CXXFLAGS := -std=c++11 -Wall -Wextra -Weffc++ -pedantic -g -I../include
 

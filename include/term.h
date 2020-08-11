@@ -66,7 +66,7 @@ public:
 	TypePush();
 	~TypePush();
 
-	TypeEnum mType;
+	Type mType;
 };
 
 class Operation : public Term
@@ -123,7 +123,7 @@ public:
 	LambdaDesc();
 	~LambdaDesc();
 
-	std::vector<TypeEnum> argTypes;
+	std::vector<Type> argTypes;
 	std::vector<std::string> argSymbols;
 
 	TypeEnum retType;

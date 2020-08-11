@@ -134,7 +134,7 @@ main3
 	//if(x == true) { print("True!") } else { print("False!") }
 	// this example shows how you would utilize a conditional statement
 	
-	x true == (["True!" (print)]) (["False!" (print)]) ? ()
+	x true == {"True!" (print)} {"False!" (print)} ? ()
 
 	
 

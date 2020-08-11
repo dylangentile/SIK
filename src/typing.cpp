@@ -1,5 +1,13 @@
 #include "typing.h"
 
+Type::Type(TypeEnum type, TypeAttribute attr) : mId(type), mAttr(attr)
+{
+
+}
+
+Type::~Type() {}
+
+
 TypeEnum convert_toktype_typeenum(TokenType type)
 {
 	switch(type)

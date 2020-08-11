@@ -25,6 +25,25 @@ typedef enum
 
 }TypeEnum;
 
+typedef enum
+{
+	kAttr_NULL = 0,
+	kAttr_Refrence,
+	kAttr_Restrict
+}TypeAttribute;
+
+
+class Type
+{
+public:
+	Type(TypeEnum type, TypeAttribute attr = kAttr_NULL);
+	~Type();
+
+	TypeEnum mId;
+	TypeAttribute mAttr;
+
+};
+
 
 typedef struct Variant
 {
