@@ -25,7 +25,7 @@ class Term
 protected:
 	Term(TermID id);
 public:
-	~Term();
+	virtual ~Term();
 	void assignDebug(Token* debugTok);
 
 	const TermID mId;
