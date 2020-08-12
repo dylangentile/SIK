@@ -20,6 +20,11 @@ SymbolPush::SymbolPush() : Term(kTerm_SymbolPush)
 
 }
 
+SymbolPush::SymbolPush(const SymbolPush& other) : Term(kTerm_SymbolPush), symbol(other.symbol)
+{
+	
+}
+
 SymbolPush::~SymbolPush() {}
 
 

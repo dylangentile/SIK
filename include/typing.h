@@ -37,6 +37,7 @@ class Type
 {
 public:
 	Type(TypeEnum type, TypeAttribute attr = kAttr_NULL);
+	Type(const Type& other);
 	~Type();
 
 	TypeEnum mId;

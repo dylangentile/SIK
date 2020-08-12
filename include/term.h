@@ -39,6 +39,7 @@ class SymbolPush : public Term
 {
 public:
 	SymbolPush();
+	SymbolPush(const SymbolPush&);
 	~SymbolPush();
 
 	std::string symbol;
