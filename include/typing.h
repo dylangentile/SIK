@@ -40,7 +40,7 @@ public:
 	Type(const Type& other);
 	~Type();
 
-	TypeEnum mId;
+	TypeEnum mTypeId;
 	TypeAttribute mAttr;
 
 };

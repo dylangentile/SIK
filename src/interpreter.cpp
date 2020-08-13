@@ -99,6 +99,8 @@ Interpreter::derefrence(Object* obj)
 			}
 
 		}
+
+		return static_cast<Object*>(s_obj); //undefined symbol
 	}
 	else
 	{
@@ -141,7 +143,8 @@ isIntType(TypeEnum x)
 	return isSIntType(x) || isUIntType(x);
 }
 
-#define BINOP_MACRO(member) do{ \
+
+#define BINOP_MACRO_NO_MOD(member) do{ \
 	switch(op->op) { \
 		case kToken_PLUS: result->member = LHS->member + RHS->member; \
 		break; \
@@ -151,31 +154,53 @@ isIntType(TypeEnum x)
 		break; \
 		case kToken_DIVIDE: result->member = LHS->member / RHS->member; \
 		break; \
-		case kToken_MODULO: result->member = LHS->member % RHS->member; \
+		case kToken_LOGIC_EQUAL:{result->bVal = LHS->member == RHS->member; \
+			result->mType = kType_BOOL;}\
+		break; \
+		case kToken_LOGIC_NOT_EQUAL:{result->bVal = LHS->member != RHS->member; \
+			result->mType = kType_BOOL;}\
+		break; \
+		case kToken_LESS:{result->bVal = LHS->member < RHS->member; \
+			result->mType = kType_BOOL;}\
+		break; \
+		case kToken_GREATER:{result->bVal = LHS->member > RHS->member; \
+			result->mType = kType_BOOL;}\
+		break; \
+		case kToken_LESS_EQUAL:{result->bVal = LHS->member <= RHS->member; \
+			result->mType = kType_BOOL;}\
+		break; \
+		case kToken_GREATER_EQUAL:{result->bVal = LHS->member >= RHS->member; \
+			result->mType = kType_BOOL;}\
 		break; \
 		default: break;}}while(0)
 
-#define BINOP_MACRO_NO_MOD(member)do{ \
-	switch(op->op) { \
-		case kToken_PLUS: result->member = LHS->member + RHS->member; \
-		break; \
-		case kToken_MINUS: result->member = LHS->member - RHS->member; \
-		break; \
-		case kToken_MULTIPLY: result->member = LHS->member * RHS->member; \
-		break; \
-		case kToken_DIVIDE: result->member = LHS->member / RHS->member; \
-		break; \
-		default: break;}}while(0)
+#define BINOP_MACRO(member) do{{ \
+	if(op->op == kToken_MODULO) \
+	{\
+		result->member = LHS->member % RHS->member; \
+	}\
+	else\
+	{\
+		BINOP_MACRO_NO_MOD(member);\
+	}\
+	}}while(0)
+
+
 
 
 
 Object*
 Interpreter::standardBinOp(ValueObject* LHS, ValueObject* RHS, Operation* op)
 {
-	if(LHS->mType == kType_BOOL || RHS->mType == kType_BOOL)
+	if((LHS->mType == kType_BOOL || RHS->mType == kType_BOOL) 
+		&& (op->op != kToken_LOGIC_EQUAL
+		|| op->op != kToken_LOGIC_NOT_EQUAL))
 		lerror(kE_Fatal, op->mDebugToken, "cannot perform binary operation on boolean!");
 
-	if((LHS->mType == kType_STRING || RHS->mType == kType_STRING)&& op->op != kToken_PLUS)
+	if((LHS->mType == kType_STRING || RHS->mType == kType_STRING)
+		&& (op->op != kToken_PLUS
+		||  op->op != kToken_LOGIC_EQUAL
+		|| 	op->op != kToken_LOGIC_NOT_EQUAL))
 		lerror(kE_Fatal, op->mDebugToken, "cannot perform non-addition operation on string!");
 
 	if(LHS->mType != RHS->mType)
@@ -207,7 +232,35 @@ Interpreter::standardBinOp(ValueObject* LHS, ValueObject* RHS, Operation* op)
 
 	switch(LHS->mType)
 	{
-		case kType_STRING: result->strVal = LHS->strVal + RHS->strVal; //we know its addition
+		case kType_STRING: 
+		switch(op->op)
+		{
+			case kToken_PLUS: result->strVal = LHS->strVal + RHS->strVal;
+			break;
+			case kToken_LOGIC_EQUAL: 	{result->bVal = LHS->strVal == RHS->strVal;
+										 result->mType = kType_BOOL;}
+			break;
+			case kToken_LOGIC_NOT_EQUAL:{result->bVal = LHS->strVal != RHS->strVal;
+										 result->mType = kType_BOOL;} 
+			break;
+			default: lerror(kE_Fatal, op->mDebugToken, 
+							"cannot perform operation on string!");
+			break;
+		}
+		break;
+		case kType_BOOL: 
+		switch(op->op)
+			{
+				case kToken_LOGIC_EQUAL:	{result->bVal = LHS->bVal == RHS->bVal;
+											 result->mType = kType_BOOL;} 
+				break;
+				case kToken_LOGIC_NOT_EQUAL:{result->bVal = LHS->bVal != RHS->bVal;
+											 result->mType = kType_BOOL;} 
+				break;
+				default: lerror(kE_Fatal, op->mDebugToken, 
+								"cannot perform operation on bool!");
+				break;
+			}
 		break;
 		case kType_U64: BINOP_MACRO(u64);
 		break;
@@ -224,10 +277,27 @@ Interpreter::standardBinOp(ValueObject* LHS, ValueObject* RHS, Operation* op)
 
 
 	return result;
+}
 
-	
+/*Object*
+Interpreter::logicalBinOp(ValueObject* LHS, ValueObject* RHS, Operation* op)
+{
+
+}*/
 
 
+inline TokenType
+convertCompound(TokenType x)
+{
+	switch(x)
+	{
+		case kToken_PLUS_EQUAL: return kToken_PLUS;
+		case kToken_MINUS_EQUAL: return kToken_MINUS;
+		case kToken_MULTIPLY_EQUAL: return kToken_MULTIPLY;
+		case kToken_DIVIDE_EQUAL: return kToken_DIVIDE;
+		case kToken_MODULO_EQUAL: return kToken_MODULO;
+		default: return kToken_NULL;
+	}
 }
 
 //todo:
@@ -247,25 +317,35 @@ Interpreter::interpretOperation(Operation* op)
 	}
 	else
 	{
+
+		StackFrame* cFrame = currentFrame();
 		
 		Object* RHS = popDeque(static_cast<Term*>(op));
 		Object* LHS = popDeque(static_cast<Term*>(op));
 
 		Object* oRHS = RHS, *oLHS = LHS;
 		
-		RHS = derefrence(RHS);
-		LHS = derefrence(LHS);
-
+		
 
 		Object* result = nullptr;
 		switch(op->op)
 		{
+			case kToken_LOGIC_EQUAL:
+			case kToken_LOGIC_NOT_EQUAL:
+			case kToken_LESS:
+			case kToken_GREATER:
+			case kToken_LESS_EQUAL:
+			case kToken_GREATER_EQUAL:
+
 			case kToken_PLUS:
 			case kToken_MINUS:
 			case kToken_MULTIPLY:
 			case kToken_DIVIDE:
 			case kToken_MODULO: 
 			{
+				RHS = derefrence(RHS);
+				LHS = derefrence(LHS);
+
 				if(LHS->mId != kObject_Value || RHS->mId != kObject_Value)
 					lerror(kE_Fatal, op->mDebugToken, 
 						"cannot perform this operation on non-value term!");
@@ -273,10 +353,16 @@ Interpreter::interpretOperation(Operation* op)
 				result = standardBinOp( static_cast<ValueObject*>(LHS), 
 										static_cast<ValueObject*>(RHS), op);
 
+				cFrame->theDeque.push_back(result);
+				delete RHS;
+				delete LHS;
+
 			}
 			break;
 			case kToken_ASSIGN_EQUAL:
 			{
+				RHS = derefrence(RHS);
+
 				if(LHS->mId == kObject_Symbol)
 				{
 					SymbolObject* sym = static_cast<SymbolObject*>(LHS);
@@ -287,12 +373,17 @@ Interpreter::interpretOperation(Operation* op)
 						{
 							delete finder->second;
 							finder->second = RHS;
-							goto NO_RHS_DELETE;
+							cFrame->theDeque.push_back(LHS);
 						}
 					}
+
+					lerror(kE_Fatal, op->mDebugToken, "LHS assignee symbol undefined");
 				}
 				else if(LHS->mId == kObject_Lambda && RHS->mId == kObject_LambdaDesc)
 				{
+					LambdaObject* lobj = static_cast<LambdaObject*>(LHS);
+					lobj->mDescriptor = static_cast<LambdaObjectDesc*>(RHS);
+					cFrame->theDeque.push_back(LHS);
 
 				}
 				else
@@ -303,20 +394,94 @@ Interpreter::interpretOperation(Operation* op)
 			break;
 			case kToken_DECL_EQUAL:
 			{
+				RHS = derefrence(RHS);
+
+				if(LHS->mId != kObject_Symbol)
+					lerror(kE_Fatal, op->mDebugToken, ":= operator requires symbol lhs");
+
+				SymbolObject* sym = static_cast<SymbolObject*>(LHS);
+				auto finder = cFrame->symbolMap.find(sym->symbol);
+
+				if(finder != cFrame->symbolMap.end())
+					lerror(kE_Fatal, op->mDebugToken, 
+						"lhs symbol already defined in current frame!");
+
+				if(RHS->mId == kObject_Type)
+				{
+					ValueObject* val = new ValueObject();
+					val->mType = static_cast<TypeObject*>(RHS)->mTypeId;
+					delete RHS;
+					RHS = static_cast<Object*>(val);
+				}
+
+				cFrame->symbolMap.insert(
+					std::make_pair(sym->symbol, RHS));
+				cFrame->theDeque.push_back(LHS);
+				
 
 			}
+			break;
+			case kToken_PLUS_EQUAL:
+			case kToken_MINUS_EQUAL:
+			case kToken_MULTIPLY_EQUAL:
+			case kToken_DIVIDE_EQUAL:
+			case kToken_MODULO_EQUAL:
+			{
+				if(LHS->mId != kObject_Symbol)
+					lerror(kE_Fatal, op->mDebugToken, "compound operation requires symbol lhs");
+
+				SymbolObject* sym = static_cast<SymbolObject*>(LHS);
+				SymbolObject* tempLHS = new SymbolObject(*static_cast<SymbolPush*>(sym));
+				Operation theOp;
+
+				cFrame->theDeque.push_back(LHS);
+				cFrame->theDeque.push_back(tempLHS); //deletes tempLHS for us
+				cFrame->theDeque.push_back(RHS);
+				theOp.op = convertCompound(op->op);
+				interpretOperation(&theOp);
+
+				theOp.op = kToken_ASSIGN_EQUAL;
+				interpretOperation(&theOp);
+
+			}
+			break;
+			case kToken_LOGIC_AND:
+			case kToken_LOGIC_OR:
+			{
+				RHS = derefrence(RHS);
+				LHS = derefrence(LHS);
+
+				if(LHS->mId != kObject_Value || RHS->mId != kObject_Value)
+					lerror(kE_Fatal, op->mDebugToken, 
+						"cannot perform this operation on non-value term!");
+
+				ValueObject* lval = static_cast<ValueObject*>(LHS);
+				ValueObject* rval = static_cast<ValueObject*>(RHS);
+
+				if(lval->mType != kType_BOOL || rval->mType != kType_BOOL)
+					lerror(kE_Fatal, op->mDebugToken, 
+						"cannot perform &&/|| on non-boolean values");
+
+				if(op->op == kToken_LOGIC_AND)
+					lval->bVal = lval->bVal && rval->bVal;
+				else
+					lval->bVal = lval->bVal || rval->bVal;
+
+				cFrame->theDeque.push_back(LHS);
+				delete RHS;
+			}
+			break;
+			default: lerror(kE_Fatal, op->mDebugToken, "invalid/unsupported operation token!");
 			break;
 		}
 
 
-		delete RHS;
+		//cleanup derefrence
 		if(oRHS != RHS)
 			delete oRHS;
-	NO_RHS_DELETE:
-	
-		delete LHS;
 		if(oLHS != LHS)
 			delete oLHS;
+	
 
 	
 		

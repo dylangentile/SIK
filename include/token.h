@@ -120,6 +120,7 @@ public:
 };
 
 bool isUnaryOp(TokenType x);
+bool isBinOp(TokenType x);
 
 
 

@@ -1,11 +1,11 @@
 #include "typing.h"
 
-Type::Type(TypeEnum type, TypeAttribute attr) : mId(type), mAttr(attr)
+Type::Type(TypeEnum type, TypeAttribute attr) : mTypeId(type), mAttr(attr)
 {
 
 }
 
-Type::Type(const Type& other) : mId(other.mId), mAttr(other.mAttr)
+Type::Type(const Type& other) : mTypeId(other.mTypeId), mAttr(other.mAttr)
 {
 
 }
