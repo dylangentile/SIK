@@ -192,37 +192,23 @@ isIntType(TypeEnum x)
 Object*
 Interpreter::standardBinOp(ValueObject* LHS, ValueObject* RHS, Operation* op)
 {
-	if((LHS->mType == kType_BOOL || RHS->mType == kType_BOOL) 
-		&& (op->op != kToken_LOGIC_EQUAL
-		|| op->op != kToken_LOGIC_NOT_EQUAL))
-		lerror(kE_Fatal, op->mDebugToken, "cannot perform binary operation on boolean!");
-
-	if((LHS->mType == kType_STRING || RHS->mType == kType_STRING)
-		&& (op->op != kToken_PLUS
-		||  op->op != kToken_LOGIC_EQUAL
-		|| 	op->op != kToken_LOGIC_NOT_EQUAL))
-		lerror(kE_Fatal, op->mDebugToken, "cannot perform non-addition operation on string!");
+	
 
 	if(LHS->mType != RHS->mType)
-	{
-		if(isIntType(LHS->mType) && isIntType(RHS->mType))
-		{
-			if(isUIntType(LHS->mType) && isUIntType(RHS->mType))
-			{
-				RHS->u64 = (uint64_t)RHS->i64;
-				RHS->mType = kType_U64;
-			}
-			else
-			{
-				LHS->u64 = (uint64_t)LHS->i64;
-				LHS->mType = kType_U64;
-			}
-		}
-		else
-		{
-			lerror(kE_Fatal, op->mDebugToken, "cannot perform operation on differing types!");
-		}
-	}
+		lerror(kE_Fatal, op->mDebugToken, "cannot perform operation on differing types!");
+
+	if(LHS->mType == kType_BOOL
+		&& op->op != kToken_LOGIC_EQUAL
+		&& op->op != kToken_LOGIC_NOT_EQUAL)
+		lerror(kE_Fatal, op->mDebugToken, "cannot perform binary operation on boolean!");
+
+	if(LHS->mType == kType_STRING
+		&& op->op != kToken_PLUS
+		&& op->op != kToken_LOGIC_EQUAL
+		&& op->op != kToken_LOGIC_NOT_EQUAL)
+		lerror(kE_Fatal, op->mDebugToken, "cannot perform operation on string!");
+		
+	
 
 	if(op->op == kToken_MODULO && (LHS->mType == kType_DOUBLE || LHS->mType == kType_FLOAT))
 		lerror(kE_Fatal, op->mDebugToken, "cannot perform '%' on a floating point value!");
@@ -264,7 +250,19 @@ Interpreter::standardBinOp(ValueObject* LHS, ValueObject* RHS, Operation* op)
 		break;
 		case kType_U64: BINOP_MACRO(u64);
 		break;
+		case kType_U32: BINOP_MACRO(u32);
+		break;
+		case kType_U16: BINOP_MACRO(u16);
+		break;
+		case kType_U8: BINOP_MACRO(u8);
+		break;
 		case kType_I64: BINOP_MACRO(i64);
+		break;
+		case kType_I32: BINOP_MACRO(i32);
+		break;
+		case kType_I16: BINOP_MACRO(i16);
+		break;
+		case kType_I8: BINOP_MACRO(i8);
 		break;
 		case kType_DOUBLE: BINOP_MACRO_NO_MOD(dVal);
 		break;
@@ -298,6 +296,63 @@ convertCompound(TokenType x)
 		case kToken_MODULO_EQUAL: return kToken_MODULO;
 		default: return kToken_NULL;
 	}
+}
+
+#define VAL_CAST_HELPER_MACRO(dest, tval) do{\
+	switch(val->mType){ \
+		case kType_U64: val->dest = (tval)val->u64;\
+		break;\
+		case kType_U32: val->dest = (tval)val->u32;\
+		break;\
+		case kType_U16: val->dest = (tval)val->u16;\
+		break;\
+		case kType_U8: val->dest = (tval)val->u8;\
+		break;\
+		case kType_I64: val->dest = (tval)val->i64;\
+		break;\
+		case kType_I32: val->dest = (tval)val->i32;\
+		break;\
+		case kType_I16: val->dest = (tval)val->i16;\
+		break;\
+		case kType_I8: val->dest = (tval)val->i8;\
+		break;\
+		case kType_FLOAT: val->dest = (tval)val->fVal;\
+		break;\
+		case kType_DOUBLE: val->dest = (tval)val->dVal;\
+		default:break;\
+	}}while(0)\
+
+
+void
+Interpreter::val_cast(ValueObject* val, TypeObject* type)
+{
+	switch(type->mTypeId)
+	{
+		case kType_U64: VAL_CAST_HELPER_MACRO(u64, uint64_t);
+		break;
+		case kType_U32: VAL_CAST_HELPER_MACRO(u32, uint32_t);
+		break;
+		case kType_U16: VAL_CAST_HELPER_MACRO(u16, uint16_t);
+		break;
+		case kType_U8: VAL_CAST_HELPER_MACRO(u8, uint8_t);
+		break;
+		case kType_I64: VAL_CAST_HELPER_MACRO(i64, int64_t);
+		break;
+		case kType_I32: VAL_CAST_HELPER_MACRO(i32, int32_t);
+		break;
+		case kType_I16: VAL_CAST_HELPER_MACRO(i16, int16_t);
+		break;
+		case kType_I8: VAL_CAST_HELPER_MACRO(i8, int8_t);
+		break;
+		case kType_FLOAT: VAL_CAST_HELPER_MACRO(fVal, float);
+		break;
+		case kType_DOUBLE: VAL_CAST_HELPER_MACRO(dVal, double);
+		break;
+		default: oerror(kE_Fatal, val, "cannot be cast to type: %o"/*,type*/);
+
+	}
+
+
 }
 
 //todo:
@@ -365,15 +420,29 @@ Interpreter::interpretOperation(Operation* op)
 
 				if(LHS->mId == kObject_Symbol)
 				{
-					SymbolObject* sym = static_cast<SymbolObject*>(LHS);
-					for(StackFrame* sf : stackFrameDeque)
+					if(RHS->mId == kObject_Type)
 					{
-						auto finder = sf->symbolMap.find(sym->symbol);
-						if(finder != sf->symbolMap.end())
+						LHS = derefrence(LHS);
+
+						if(LHS->mId != kObject_Value)
+							oerror(kE_Fatal, LHS, "expected value for cast!");
+
+						val_cast( static_cast<ValueObject*>(LHS), 
+								  static_cast<TypeObject*>(RHS)); 
+						cFrame->theDeque.push_back(LHS);
+					}
+					else
+					{
+						SymbolObject* sym = static_cast<SymbolObject*>(LHS);
+						for(StackFrame* sf : stackFrameDeque)
 						{
-							delete finder->second;
-							finder->second = RHS;
-							cFrame->theDeque.push_back(LHS);
+							auto finder = sf->symbolMap.find(sym->symbol);
+							if(finder != sf->symbolMap.end())
+							{
+								delete finder->second;
+								finder->second = RHS;
+								cFrame->theDeque.push_back(LHS);
+							}
 						}
 					}
 
@@ -591,7 +660,8 @@ Interpreter::interpretTerm(Term* term, StackFrame* frame)
 				Object* arg = popDeque(term);
 				arg = derefrence(arg);
 				if(arg->mId != kObject_Value)
-					lerror(kE_Fatal, term->mDebugToken, "non-value arguements are currently unsupported!");
+					lerror(kE_Fatal, term->mDebugToken, 
+						"non-value arguements are currently unsupported!");
 
 				ValueObject* val = static_cast<ValueObject*>(arg);
 				

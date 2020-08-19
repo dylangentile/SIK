@@ -3,7 +3,7 @@
 main
 {
 	a 6 :=
-	"hello world!" (print)
+	"hello" " world!" + (print)
 	a 10 * (print)
 	0
 } (void -> i64) = :=

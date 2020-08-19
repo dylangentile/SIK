@@ -37,6 +37,8 @@ private:
 	void interpretTerm(Term*, StackFrame*);
 	void interpretFrame();
 
+	void val_cast(ValueObject*, TypeObject*);
+
 
 private:
 	LambdaBody* const globalBody;
