@@ -117,7 +117,7 @@ main2
 // terms off of the stack. It reads the first, a boolean, and if it's true it "returns",
 // the second term, else, it returns the 3rd.
 //
-// With how the ternary works in mind, looking a `fn main3 -> i32` we can see how
+// With how the ternary works in mind, looking a `main3 {} (void -> i32)` we can see how
 // a stack term is selected based upon x's true/false value, and then that stack
 // term is executed. if we were not to encapsulate the two print statements
 // within the stack terms, then based upon how SIKlang works, both print statements

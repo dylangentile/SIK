@@ -1,5 +1,6 @@
 main.o: main.cpp ../include/error.h ../include/token.h ../include/lexer.h \
-  ../include/parser.h ../include/term.h ../include/typing.h
+  ../include/parser.h ../include/term.h ../include/typing.h \
+  ../include/interpreter.h ../include/object.h
 object.o: object.cpp ../include/object.h ../include/typing.h \
   ../include/token.h ../include/term.h
 interpreter.o: interpreter.cpp ../include/interpreter.h ../include/term.h \

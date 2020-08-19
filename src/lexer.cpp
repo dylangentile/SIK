@@ -23,12 +23,12 @@ const std::unordered_map<std::string, TokenType> type_map =
 	{"int",  kToken_I64},
 	{"uint", kToken_U64},
 
-	//{"i64", kToken_I64},
+	{"i64", kToken_I64},
 	//{"i32", kToken_I32},
 	//{"i16", kToken_I16},
 	//{"i8",  kToken_I8},
 
-	//{"u64", kToken_U64},
+	{"u64", kToken_U64},
 	//{"u32", kToken_U32},
 	//{"u16", kToken_U16},
 	//{"u8",  kToken_U8},

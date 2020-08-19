@@ -1,6 +1,7 @@
 #include "error.h"
 #include "lexer.h"
 #include "parser.h"
+#include "interpreter.h"
 #include <cstdio>
 
 static_assert(sizeof(double) == 8, "Double is not 8 bytes!");
@@ -14,15 +15,15 @@ int main(int argc, const char* argv[])
 
 	File* theFile = lexFile(argv[1]);
 
-	for(Token* tok : theFile->tokenVector)
-	{
-		printf("%s\n", tok->mStr.c_str());
-	}
+	//for(Token* tok : theFile->tokenVector) printf("%s\n", tok->mStr.c_str());
+	
 
 	Parser theParser(theFile);
 	LambdaBody* theBody = theParser.parse();
 
-	printErrors();
+	Interpreter exe(theBody);
+	exe.interpret();
+	//printErrors();
 	delete theFile;
 	delete theBody;
 	return 0;

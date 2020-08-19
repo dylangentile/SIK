@@ -2,6 +2,8 @@
 
 main
 {
+	a 6 :=
 	"hello world!" (print)
+	a 10 * (print)
 	0
-} (void -> i32) = :=
+} (void -> i64) = :=

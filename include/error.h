@@ -13,3 +13,4 @@ typedef enum
 
 void printErrors();
 void lerror(Error_Level level, Token* tok, const char* message);
+#define oerror(level, obj, message) lerror(level, nullptr, message)

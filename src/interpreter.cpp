@@ -1,6 +1,6 @@
 #include "interpreter.h"
 #include "error.h"
-
+#include <cstdio>
 
 
 StackFrame::StackFrame(LambdaObject* body) : mBody(body)
@@ -10,11 +10,11 @@ StackFrame::StackFrame(LambdaObject* body) : mBody(body)
 
 StackFrame::~StackFrame()
 {
-	for(Object* obj : theDeque)
+	/*for(Object* obj : theDeque)
 		delete obj;
 
 	for(auto pair : symbolMap)
-		delete pair.second;
+		delete pair.second;*/
 }
 
 
@@ -491,58 +491,175 @@ Interpreter::interpretOperation(Operation* op)
 	}
 }
 
+
+
+void
+Interpreter::interpretPrint()
+{
+	Object* formatStrObj = popDeque();
+	formatStrObj = derefrence(formatStrObj);
+	if(formatStrObj->mId != kObject_Value)
+	{
+		oerror(kE_Fatal, formatStrObj, "print doesn't support this object!");
+	}
+	else
+	{
+		std::string formatStr = "";
+		ValueObject* val = static_cast<ValueObject*>(formatStrObj);
+		
+		switch(val->mType)
+		{
+
+			case kType_STRING: printf("%s\n", val->strVal.c_str());
+			break;
+			case kType_U64: printf("%llu\n", val->u64);
+			break;
+			case kType_I64:	printf("%lli\n", val->i64);
+			break;
+			default: oerror(kE_Fatal, val, "print doesn't support this type!");
+		}
+
+	}
+
+}
+
 #define TERM_CONVERT_PUSH(term_type, obj_type) do{\
 	term_type* push = static_cast<term_type*>(term);\
 	obj_type* obj = new obj_type(*push);\
 	frame->theDeque.push_back(static_cast<Object*>(obj));\
 }while(0)
 
+
+void 
+Interpreter::interpretTerm(Term* term, StackFrame* frame)
+{
+	switch(term->mId)
+	{
+		case kTerm_SymbolPush:
+		{
+			TERM_CONVERT_PUSH(SymbolPush, SymbolObject);
+		}
+		break;
+		case kTerm_ValuePush:
+		{
+			TERM_CONVERT_PUSH(ValuePush, ValueObject);
+		}
+		break;
+		case kTerm_TypePush:
+		{
+			TERM_CONVERT_PUSH(TypePush, TypeObject);
+		}
+		break;
+		case kTerm_Operation: interpretOperation(static_cast<Operation*>(term));
+		break;
+		case kTerm_UnaryLHS: lerror(kE_Fatal, term->mDebugToken, "currently unsupported");
+		break;
+		case kTerm_ExecutePrev:
+		case kTerm_Execute:
+		{
+		
+			if(term->mId == kTerm_Execute)
+				interpretTerm(static_cast<Execute*>(term)->state, frame);
+			
+			Object* expr = popDeque(term);
+			//needs garbage collection
+
+			if(	   expr->mId == kObject_Symbol 
+				&& static_cast<SymbolObject*>(expr)->symbol == "print")
+			{
+				interpretPrint();
+				break;
+			}
+
+
+			expr = derefrence(expr);
+
+			if(expr->mId != kObject_Lambda)
+				lerror(kE_Fatal, term->mDebugToken, "expected lambda body to execute!");
+
+			LambdaObject* lambda = static_cast<LambdaObject*>(expr);
+			LambdaObjectDesc* descriptor = lambda->mDescriptor;
+
+			if(descriptor->argTypes.size() != descriptor->argSymbols.size())
+				lerror(kE_Fatal, term->mDebugToken, "ill-formed lambda!");
+
+
+			StackFrame nSF(lambda);
+
+			for(int i = descriptor->argTypes.size() - 1; i >= 0 ; i--)
+			{
+				Object* arg = popDeque(term);
+				arg = derefrence(arg);
+				if(arg->mId != kObject_Value)
+					lerror(kE_Fatal, term->mDebugToken, "non-value arguements are currently unsupported!");
+
+				ValueObject* val = static_cast<ValueObject*>(arg);
+				
+				Type argType(descriptor->argTypes[i]);
+
+				if(val->mType != argType.mTypeId)
+					lerror(kE_Fatal, term->mDebugToken, "mismatched arguement types!"); 
+					//todo update error message
+
+				//todo: handle refrenceObject on the outside and restrict
+
+				if(argType.mAttr == kAttr_Refrence)
+				{
+					//pass by refrence
+					nSF.symbolMap.insert(std::make_pair(descriptor->argSymbols[i], 
+						static_cast<Object*>(val)));
+				}
+				else
+				{
+					//pass by copy
+					nSF.symbolMap.insert(std::make_pair(descriptor->argSymbols[i], 
+						new ValueObject(*static_cast<Variant*>(val))));
+					//todo: implement interpreter garbage collector!
+				}
+			}
+
+			stackFrameDeque.push_back(&nSF);
+			interpretFrame();
+			stackFrameDeque.pop_back();
+
+			
+			
+
+
+			
+		}
+		break;
+		case kTerm_Ternary:
+		break;
+		case kTerm_LambdaDesc:
+		{
+			TERM_CONVERT_PUSH(LambdaDesc, LambdaObjectDesc);
+		}
+		break;
+		case kTerm_LambdaBody:
+		{
+			TERM_CONVERT_PUSH(LambdaBody, LambdaObject);
+		}
+		break;
+		default: lerror(kE_Fatal, term->mDebugToken, "Un-categorizable token!");
+		break;
+	}
+}
+
+
 void
 Interpreter::interpretFrame()
 {
 	StackFrame* frame = currentFrame();
 	for(Term* term : frame->mBody->termVec)
+		interpretTerm(term, frame);
+
+	auto finder = frame->symbolMap.find("main");
+	if(finder != frame->symbolMap.end())
 	{
-		switch(term->mId)
-		{
-			case kTerm_SymbolPush:
-			{
-				TERM_CONVERT_PUSH(SymbolPush, SymbolObject);
-			}
-			break;
-			case kTerm_ValuePush:
-			{
-				TERM_CONVERT_PUSH(ValuePush, ValueObject);
-			}
-			break;
-			case kTerm_TypePush:
-			{
-				TERM_CONVERT_PUSH(TypePush, TypeObject);
-			}
-			break;
-			case kTerm_Operation: interpretOperation(static_cast<Operation*>(term));
-			break;
-			case kTerm_UnaryLHS:
-			break;
-			case kTerm_ExecutePrev:
-			break;
-			case kTerm_Execute:
-			break;
-			case kTerm_Ternary:
-			break;
-			case kTerm_LambdaDesc:
-			{
-				TERM_CONVERT_PUSH(LambdaDesc, LambdaObjectDesc);
-			}
-			break;
-			case kTerm_LambdaBody:
-			{
-				TERM_CONVERT_PUSH(LambdaBody, LambdaObject);
-			}
-			break;
-			default: lerror(kE_Fatal, term->mDebugToken, "Un-categorizable token!");
-			break;
-		}
+		frame->theDeque.push_back(finder->second);
+		ExecutePrev prevexec;
+		interpretTerm(&prevexec, frame);
 	}
 }
 

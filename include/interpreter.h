@@ -33,7 +33,10 @@ private:
 	Object* derefrence(Object*);
 	Object* standardBinOp(ValueObject*, ValueObject*, Operation*);
 	void interpretOperation(Operation*);
+	void interpretPrint();
+	void interpretTerm(Term*, StackFrame*);
 	void interpretFrame();
+
 
 private:
 	LambdaBody* const globalBody;
